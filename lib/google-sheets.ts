@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 
-export async function appendToGoogleSheet(rows: any[]) {
+export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[][]) {
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
   // Handle newlines correctly in Vercel environment variables
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -21,19 +21,8 @@ export async function appendToGoogleSheet(rows: any[]) {
   const sheets = google.sheets({ version: "v4", auth });
 
   try {
-    // 1. Check if headers exist, if not create them. (Optional but requested: "write a clean header row")
-    // Assuming we just append headers first if sheet is empty, but generally we can just write headers to A1:E1.
-    // For safety, we can just ensure they are there or append directly. Let's do a simple append for the rows.
-
-    // We will append the headers as well if we were starting from scratch, but since we are just appending leads:
-    // It's safer to always append, or check first.
-    // The instructions say: "write a clean header row to the Google Sheet using these exact names, and append the processed properties underneath them"
-    // Let's implement a check to see if headers exist, and if not, add them.
-
-    const getRes = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Sheet1!A1:E1",
-    });
+    const sheetData = await sheets.spreadsheets.get({ spreadsheetId });
+    const existingSheets = sheetData.data.sheets?.map(s => s.properties?.title) || [];
 
     const headers = [
       "Property Address",
@@ -43,28 +32,60 @@ export async function appendToGoogleSheet(rows: any[]) {
       "Custom Talk Track",
     ];
 
-    if (!getRes.data.values || getRes.data.values.length === 0) {
+    // Helper to ensure a sheet tab exists and has headers
+    const ensureSheet = async (title: string) => {
+      if (!existingSheets.includes(title)) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [{ addSheet: { properties: { title } } }]
+          }
+        });
+
+        // Add headers to new sheet
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: `${title}!A1`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [headers] }
+        });
+      } else {
+        // If sheet exists, just make sure headers are there (simple check)
+        const getRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${title}!A1:E1`,
+        });
+        if (!getRes.data.values || getRes.data.values.length === 0) {
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: `${title}!A1`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [headers] },
+          });
+        }
+      }
+    };
+
+    if (goldenRows.length > 0) {
+      await ensureSheet("Golden Leads");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Sheet1!A1",
+        range: "Golden Leads!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: {
-          values: [headers],
-        },
+        requestBody: { values: goldenRows },
       });
     }
 
-    // 2. Append the valid rows
-    if (rows.length > 0) {
+    if (nurtureRows.length > 0) {
+      await ensureSheet("12-Month Nurture");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Sheet1!A1",
+        range: "12-Month Nurture!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: {
-          values: rows,
-        },
+        requestBody: { values: nurtureRows },
       });
     }
+
   } catch (error) {
     console.error("Error appending to Google Sheet:", error);
     throw error;

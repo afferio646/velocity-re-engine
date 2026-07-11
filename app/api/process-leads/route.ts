@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Papa from "papaparse";
 import { splitAddress } from "../../../lib/address-utils";
 import { fetchAttomData } from "../../../lib/attom-api";
-import { passesFilters } from "../../../lib/filters";
+import { classifyLead } from "../../../lib/filters";
 import { generateTalkTrack } from "../../../lib/talk-track";
 import { appendToGoogleSheet } from "../../../lib/google-sheets";
 
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     }
 
     const leads = parsedData.data as any[];
-    const processedRows: any[][] = [];
+    const goldenRows: any[][] = [];
+    const nurtureRows: any[][] = [];
 
     for (const lead of leads) {
       const fullAddress = lead["Address"];
@@ -53,11 +54,10 @@ export async function POST(req: Request) {
       // 1. Fetch from ATTOM
       const attomData = await fetchAttomData(address1, address2);
 
-      // 2. Filter logic
-      const { passes, isDistressed } = passesFilters(attomData);
-      if (!passes) {
-        continue;
-      }
+      // 2. Classify Lead
+      const { classification, isDistressed, isAbsentee, yearsOwned } = classifyLead(attomData);
+
+      if (classification === "Drop") continue;
 
       // 3. Extract needed variables for talk track
       const ownerName = `${firstName || ""} ${lastName || ""}`.trim() || "Owner";
@@ -71,28 +71,37 @@ export async function POST(req: Request) {
         dom || "N/A",
         yearBuilt,
         squareFootage,
-        isDistressed
+        isDistressed,
+        isAbsentee,
+        yearsOwned
       );
 
       // 5. Prepare row for Google Sheet
-      processedRows.push([
+      const row = [
         fullAddress,
         ownerName,
         phone1 || "",
         phone2 || "",
         talkTrack,
-      ]);
+      ];
+
+      if (classification === "Golden") {
+        goldenRows.push(row);
+      } else if (classification === "Nurture") {
+        nurtureRows.push(row);
+      }
     }
 
     // 6. Append to Google Sheets
-    if (processedRows.length > 0) {
-      await appendToGoogleSheet(processedRows);
+    if (goldenRows.length > 0 || nurtureRows.length > 0) {
+      await appendToGoogleSheet(goldenRows, nurtureRows);
     }
 
     return NextResponse.json({
       success: true,
       totalProcessed: leads.length,
-      validLeads: processedRows.length,
+      validLeads: goldenRows.length,
+      nurtureLeads: nurtureRows.length
     });
   } catch (error: any) {
     console.error("Error processing request:", error);

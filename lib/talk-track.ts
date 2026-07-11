@@ -4,7 +4,9 @@ export function generateTalkTrack(
   dom: string,
   yearBuilt: string | number,
   squareFootage: string | number,
-  isDistressed: boolean
+  isDistressed: boolean,
+  isAbsentee: boolean,
+  yearsOwned: number | null
 ): string {
   const defaultInventory = "under 20";
 
@@ -12,6 +14,14 @@ export function generateTalkTrack(
 
   if (isDistressed) {
     track += " Our system also flagged that your market profile recently shifted, meaning we can move on an expedited timeline to clear any outstanding balances or terms within a clean 14-day window if that fits your schedule better.";
+  }
+
+  if (isAbsentee) {
+    track += " Since this is an investment property and currently sitting empty, we can provide a quick, clean exit so you aren't bleeding cash on holding costs.";
+  }
+
+  if (yearsOwned !== null && yearsOwned >= 10 && !isDistressed && !isAbsentee) {
+    track += ` I see you've owned this property for about ${yearsOwned} years, so you likely have substantial equity built up. This allows us to be very aggressive on our offer price if you're looking to downsize or cash out smoothly.`;
   }
 
   return track;
