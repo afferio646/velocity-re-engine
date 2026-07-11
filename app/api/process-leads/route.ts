@@ -54,7 +54,8 @@ export async function POST(req: Request) {
       const attomData = await fetchAttomData(address1, address2);
 
       // 2. Filter logic
-      if (!passesFilters(attomData)) {
+      const { passes, isDistressed } = passesFilters(attomData);
+      if (!passes) {
         continue;
       }
 
@@ -69,7 +70,8 @@ export async function POST(req: Request) {
         fullAddress,
         dom || "N/A",
         yearBuilt,
-        squareFootage
+        squareFootage,
+        isDistressed
       );
 
       // 5. Prepare row for Google Sheet

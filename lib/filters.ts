@@ -1,9 +1,28 @@
-export function passesFilters(attomData: any): boolean {
-  if (!attomData) return false;
+export function passesFilters(attomData: any): { passes: boolean; isDistressed: boolean } {
+  if (!attomData) return { passes: false, isDistressed: false };
 
+  // Pre-Foreclosure / Distress Indicators Check (Bypasses filters)
+  const foreclosureStage = attomData.foreclosure?.stage?.description?.toLowerCase() || "";
+  const recordingDate = attomData.foreclosure?.default?.recordingDate;
+
+  // Note: defaultAmount is requested to be captured per the prompt, though we don't necessarily filter on it.
+  // const defaultAmount = attomData.foreclosure?.default?.defaultAmount;
+
+  const isDistressed =
+    foreclosureStage.includes("notice of default") ||
+    foreclosureStage.includes("lis pendens") ||
+    foreclosureStage.includes("notice of trustee's sale") ||
+    (recordingDate !== undefined && recordingDate !== null && recordingDate !== "");
+
+  if (isDistressed) {
+    // If it's a distress lead, it bypasses the standard restrictions and passes as a top-tier target.
+    return { passes: true, isDistressed: true };
+  }
+
+  // Standard Restrictions
   // 1. Corporate Indicator check
   const corporateIndicator = attomData.owner?.corporateIndicator;
-  if (corporateIndicator === "Y") return false;
+  if (corporateIndicator === "Y") return { passes: false, isDistressed: false };
 
   // 2. Equity Percent check
   let equityPercent = attomData.avm?.amount?.equityPercent;
@@ -23,16 +42,16 @@ export function passesFilters(attomData: any): boolean {
       equityPercent = (1 - openLoanBalance / scrValue) * 100;
     } else {
       // If we can't calculate it, strict fail
-      return false;
+      return { passes: false, isDistressed: false };
     }
   }
 
-  if (equityPercent < 40) return false;
+  if (equityPercent < 40) return { passes: false, isDistressed: false };
 
   // 3. Active Mortgage Interest Rate check
   const interestRate = attomData.mortgage?.firstMortgage?.interestRate;
-  if (interestRate === undefined || interestRate === null) return false;
-  if (interestRate < 4.5) return false;
+  if (interestRate === undefined || interestRate === null) return { passes: false, isDistressed: false };
+  if (interestRate < 4.5) return { passes: false, isDistressed: false };
 
-  return true;
+  return { passes: true, isDistressed: false };
 }
