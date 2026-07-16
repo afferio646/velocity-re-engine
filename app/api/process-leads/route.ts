@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       const phone1 = lead["Phone1"];
       const phone2 = lead["Phone2"];
       const dom = lead["DOM"];
+      const leadType = lead["Lead Type"] || "Expired"; // Defaults to Expired if missing
 
       if (!fullAddress) continue;
 
@@ -73,7 +74,8 @@ export async function POST(req: Request) {
         squareFootage,
         isDistressed,
         isAbsentee,
-        yearsOwned
+        yearsOwned,
+        leadType
       );
 
       // 5. Prepare row for Google Sheet
