@@ -32,7 +32,14 @@ export default function Home() {
 
       if (response.ok) {
         setStatus("success");
-        setMessage(`Success! Processed ${data.totalProcessed} records.\n\nGolden Leads: ${data.validLeads}\nNurture Leads: ${data.nurtureLeads}\nMissing/Invalid Addresses: ${data.missingAddresses}\nATTOM API Failures (or missing public data): ${data.apiFailures}\n\nHeaders Found in your CSV:\n${data.headersFound?.join(", ")}`);
+        let msg = `Success! Processed ${data.totalProcessed} records.\n\nGolden Leads: ${data.validLeads}\nNurture Leads: ${data.nurtureLeads}\nMissing/Invalid Addresses: ${data.missingAddresses}\nATTOM API Failures (or missing public data): ${data.apiFailures}`;
+
+        if (data.lastApiError) {
+          msg += `\n\nLatest API Error Reason:\n❌ ${data.lastApiError}`;
+        }
+
+        msg += `\n\nHeaders Found in your CSV:\n${data.headersFound?.join(", ")}`;
+        setMessage(msg);
       } else {
         setStatus("error");
         setMessage(`Error: ${data.error || "Something went wrong."}`);

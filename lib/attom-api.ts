@@ -26,12 +26,13 @@ export async function fetchAttomData(address1: string, address2: string) {
       response.data.property &&
       response.data.property.length > 0
     ) {
-      return response.data.property[0];
+      return { data: response.data.property[0], error: null };
     }
 
-    return null;
-  } catch (error) {
-    console.error(`Error fetching ATTOM data for ${address1}, ${address2}:`, error);
-    return null;
+    return { data: null, error: "No property data returned from ATTOM for this address." };
+  } catch (error: any) {
+    console.error(`Error fetching ATTOM data for ${address1}, ${address2}:`, error.response?.data || error.message);
+    const errorMessage = error.response?.data?.status?.msg || error.response?.statusText || error.message || "Unknown API Error";
+    return { data: null, error: `ATTOM API Error: ${errorMessage}` };
   }
 }

@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     const nurtureRows: any[][] = [];
     let missingAddresses = 0;
     let apiFailures = 0;
+    let lastApiError = "";
 
     // Helper function to process a single lead
     const processLead = async (lead: any) => {
@@ -65,9 +66,12 @@ export async function POST(req: Request) {
       const { address1, address2 } = split;
 
       // 1. Fetch from ATTOM
-      const attomData = await fetchAttomData(address1, address2);
-      if (!attomData) {
+      const { data: attomData, error: attomError } = await fetchAttomData(address1, address2);
+      if (attomError || !attomData) {
         apiFailures++;
+        if (attomError) {
+          lastApiError = attomError;
+        }
         return null;
       }
 
@@ -130,6 +134,7 @@ export async function POST(req: Request) {
       nurtureLeads: nurtureRows.length,
       missingAddresses,
       apiFailures,
+      lastApiError,
       headersFound
     });
   } catch (error: any) {
