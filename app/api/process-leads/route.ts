@@ -44,26 +44,44 @@ export async function POST(req: Request) {
 
     // Helper function to process a single lead
     const processLead = async (lead: any) => {
-      const fullAddress = lead["Address"];
+      const addressCol = lead["Address"];
+      const propCity = lead["Property City"];
+      const propState = lead["Property State"];
+      const propZip = lead["Property Zip"];
+
       const firstName = lead["First Name"];
       const lastName = lead["Last Name"];
-      const phone1 = lead["Phone1"];
-      const phone2 = lead["Phone2"];
+      // Handle BatchLeads spaces in phone headers
+      const phone1 = lead["Phone1"] || lead["Phone 1"];
+      const phone2 = lead["Phone2"] || lead["Phone 2"];
       const dom = lead["DOM"];
       const leadType = lead["Lead Type"] || "Expired"; // Defaults to Expired if missing
 
-      if (!fullAddress) {
+      if (!addressCol) {
         missingAddresses++;
         return null;
       }
 
-      const split = splitAddress(fullAddress);
-      if (!split) {
-        missingAddresses++;
-        return null;
-      }
+      let address1 = "";
+      let address2 = "";
+      let fullAddressForSheet = addressCol;
 
-      const { address1, address2 } = split;
+      // Check if it's the BatchLeads separated format
+      if (propCity && propState && propZip) {
+        address1 = addressCol;
+        address2 = `${propCity}, ${propState} ${propZip}`;
+        fullAddressForSheet = `${address1}, ${address2}`;
+      } else {
+        // Fallback to ArchAgent combined format
+        const split = splitAddress(addressCol);
+        if (!split || !split.address2) {
+          missingAddresses++;
+          return null;
+        }
+        address1 = split.address1;
+        address2 = split.address2;
+        fullAddressForSheet = addressCol;
+      }
 
       // 1. Fetch from ATTOM
       const { data: attomData, error: attomError } = await fetchAttomData(address1, address2);
@@ -88,7 +106,7 @@ export async function POST(req: Request) {
       // 4. Generate Talk Track
       const talkTrack = generateTalkTrack(
         firstName || "Owner",
-        fullAddress,
+        fullAddressForSheet,
         dom || "N/A",
         yearBuilt,
         squareFootage,
@@ -101,7 +119,7 @@ export async function POST(req: Request) {
       // 5. Prepare row for Google Sheet
       return {
         classification,
-        row: [fullAddress, ownerName, phone1 || "", phone2 || "", talkTrack],
+        row: [fullAddressForSheet, ownerName, phone1 || "", phone2 || "", talkTrack],
       };
     };
 
