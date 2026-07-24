@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     const goldenRows: any[][] = [];
     const nurtureRows: any[][] = [];
 
-    for (const lead of leads) {
+    // Helper function to process a single lead
+    const processLead = async (lead: any) => {
       const fullAddress = lead["Address"];
       const firstName = lead["First Name"];
       const lastName = lead["Last Name"];
@@ -45,10 +46,10 @@ export async function POST(req: Request) {
       const dom = lead["DOM"];
       const leadType = lead["Lead Type"] || "Expired"; // Defaults to Expired if missing
 
-      if (!fullAddress) continue;
+      if (!fullAddress) return null;
 
       const split = splitAddress(fullAddress);
-      if (!split) continue;
+      if (!split) return null;
 
       const { address1, address2 } = split;
 
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       // 2. Classify Lead
       const { classification, isDistressed, isAbsentee, yearsOwned } = classifyLead(attomData);
 
-      if (classification === "Drop") continue;
+      if (classification === "Drop") return null;
 
       // 3. Extract needed variables for talk track
       const ownerName = `${firstName || ""} ${lastName || ""}`.trim() || "Owner";
@@ -79,18 +80,26 @@ export async function POST(req: Request) {
       );
 
       // 5. Prepare row for Google Sheet
-      const row = [
-        fullAddress,
-        ownerName,
-        phone1 || "",
-        phone2 || "",
-        talkTrack,
-      ];
+      return {
+        classification,
+        row: [fullAddress, ownerName, phone1 || "", phone2 || "", talkTrack],
+      };
+    };
 
-      if (classification === "Golden") {
-        goldenRows.push(row);
-      } else if (classification === "Nurture") {
-        nurtureRows.push(row);
+    // Process leads in batches to avoid timeout and overwhelming the ATTOM API
+    const batchSize = 10;
+    for (let i = 0; i < leads.length; i += batchSize) {
+      const batch = leads.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(processLead));
+
+      for (const result of results) {
+        if (result) {
+          if (result.classification === "Golden") {
+            goldenRows.push(result.row);
+          } else if (result.classification === "Nurture") {
+            nurtureRows.push(result.row);
+          }
+        }
       }
     }
 

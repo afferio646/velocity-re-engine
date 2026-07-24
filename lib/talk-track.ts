@@ -14,9 +14,15 @@ export function generateTalkTrack(
 
   if (leadType.toLowerCase().includes("fsbo")) {
     track = `Hi ${ownerFirstName}, I noticed you're currently selling your property on ${streetAddress} by owner. I'm not calling to list it—our system actively tracks local asset profiles, and we flagged your home because it fits the exact ${yearBuilt} footprint of ${squareFootage} square feet that our buyers are aggressively targeting right now. With only about ${defaultInventory} active homes matching this in your immediate area, we have a severe inventory gap. Are you open to a clean offer if we can match your numbers, or are you strictly looking for retail buyers?`;
+  } else if (leadType.toLowerCase().includes("predictive") || leadType.toLowerCase().includes("cold")) {
+    track = `Hi ${ownerFirstName}, I'm not calling to list your house. Our system actively tracks local asset profiles, and we flagged your home because it fits the exact footprint of ${squareFootage} square feet that our buyers are aggressively targeting right now. With severe inventory shortages in the area, we have an immediate gap for your property profile. Are you open to a clean, off-market offer if we can match your numbers, or are you firmly staying put?`;
   } else {
     // Default to Expired script
-    track = `Hi ${ownerFirstName}, I noticed your property on ${streetAddress} came off the market after being listed for ${dom} days. I'm calling because our system actively tracks local asset profiles, and we flagged your home specifically because it fits the exact ${yearBuilt} footprint of ${squareFootage} square feet that buyers are targeting. Right now in your immediate area, housing inventory is sitting at a severe deficit with ${defaultInventory} homes active on the market. We aren't looking to list your home traditionally—we have an immediate inventory gap for your exact property profile. Are you still open to a clean offer if we can match your terms, or have you decided to take the property off the market for good?`;
+    const domText = (!dom || dom === "N/A" || dom.trim() === "")
+      ? "came off the market recently."
+      : `came off the market after being listed for ${dom} days.`;
+
+    track = `Hi ${ownerFirstName}, I noticed your property on ${streetAddress} ${domText} I'm calling because our system actively tracks local asset profiles, and we flagged your home specifically because it fits the exact ${yearBuilt} footprint of ${squareFootage} square feet that buyers are targeting. Right now in your immediate area, housing inventory is sitting at a severe deficit with ${defaultInventory} homes active on the market. We aren't looking to list your home traditionally—we have an immediate inventory gap for your exact property profile. Are you still open to a clean offer if we can match your terms, or have you decided to take the property off the market for good?`;
   }
 
   if (isDistressed) {
