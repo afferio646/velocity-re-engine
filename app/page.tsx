@@ -32,7 +32,7 @@ export default function Home() {
 
       if (response.ok) {
         setStatus("success");
-        setMessage(`Success! Processed ${data.totalProcessed} records. ${data.validLeads} golden leads were pushed to your Google Sheet!`);
+        setMessage(`Success! Processed ${data.totalProcessed} records.\n\nGolden Leads: ${data.validLeads}\nNurture Leads: ${data.nurtureLeads}\nMissing/Invalid Addresses: ${data.missingAddresses}\nATTOM API Failures (or missing public data): ${data.apiFailures}\n\nHeaders Found in your CSV:\n${data.headersFound?.join(", ")}`);
       } else {
         setStatus("error");
         setMessage(`Error: ${data.error || "Something went wrong."}`);
@@ -78,7 +78,7 @@ export default function Home() {
         </button>
 
         {message && (
-          <div className={`mt-6 p-4 rounded-md ${
+          <div className={`mt-6 p-4 rounded-md whitespace-pre-wrap text-left ${
             status === "success" ? "bg-green-50 text-green-800 border border-green-200" :
             status === "error" ? "bg-red-50 text-red-800 border border-red-200" :
             "bg-blue-50 text-blue-800 border border-blue-200"

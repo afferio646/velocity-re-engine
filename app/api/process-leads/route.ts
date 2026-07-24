@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const parsedData = Papa.parse(fileContent, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => header.trim(), // Fixes invisible spaces or BOM characters
     });
 
     if (parsedData.errors.length > 0) {
@@ -33,8 +34,12 @@ export async function POST(req: Request) {
     }
 
     const leads = parsedData.data as any[];
+    const headersFound = parsedData.meta.fields || [];
+
     const goldenRows: any[][] = [];
     const nurtureRows: any[][] = [];
+    let missingAddresses = 0;
+    let apiFailures = 0;
 
     // Helper function to process a single lead
     const processLead = async (lead: any) => {
@@ -46,15 +51,25 @@ export async function POST(req: Request) {
       const dom = lead["DOM"];
       const leadType = lead["Lead Type"] || "Expired"; // Defaults to Expired if missing
 
-      if (!fullAddress) return null;
+      if (!fullAddress) {
+        missingAddresses++;
+        return null;
+      }
 
       const split = splitAddress(fullAddress);
-      if (!split) return null;
+      if (!split) {
+        missingAddresses++;
+        return null;
+      }
 
       const { address1, address2 } = split;
 
       // 1. Fetch from ATTOM
       const attomData = await fetchAttomData(address1, address2);
+      if (!attomData) {
+        apiFailures++;
+        return null;
+      }
 
       // 2. Classify Lead
       const { classification, isDistressed, isAbsentee, yearsOwned } = classifyLead(attomData);
@@ -112,7 +127,10 @@ export async function POST(req: Request) {
       success: true,
       totalProcessed: leads.length,
       validLeads: goldenRows.length,
-      nurtureLeads: nurtureRows.length
+      nurtureLeads: nurtureRows.length,
+      missingAddresses,
+      apiFailures,
+      headersFound
     });
   } catch (error: any) {
     console.error("Error processing request:", error);
