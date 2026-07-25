@@ -1,5 +1,5 @@
 export type LeadClassification = {
-  classification: "Golden" | "Nurture" | "Drop";
+  classification: "Liquidator" | "Anchor" | "Nurture" | "Drop";
   isDistressed: boolean;
   isAbsentee: boolean;
   yearsOwned: number | null;
@@ -20,13 +20,11 @@ export function classifyLead(attomData: any): LeadClassification {
   }
 
   // Absentee Owner Indicator
-  // Sometimes given as 'A' (Absentee) vs 'O' (Owner Occupied). Or we compare site/mail zips if it's missing.
   const ownerStatus = attomData.owner?.absenteeOwnerStatus;
   let isAbsentee = false;
-  if (ownerStatus === "A" || ownerStatus === "S") { // A = Absentee, S = State Absentee
+  if (ownerStatus === "A" || ownerStatus === "S") {
     isAbsentee = true;
   } else {
-    // Fallback: check if mailing zip and property zip are different
     const siteZip = attomData.address?.postal1;
     const mailZip = attomData.owner?.mailingAddressOne?.postal1;
     if (siteZip && mailZip && siteZip !== mailZip) {
@@ -38,7 +36,7 @@ export function classifyLead(attomData: any): LeadClassification {
 
   const foreclosureStage = attomData.foreclosure?.stage?.description?.toLowerCase() || "";
   const recordingDate = attomData.foreclosure?.default?.recordingDate;
-  const taxDelinquentYear = attomData.assessment?.tax?.taxDelinquentYear; // Silent distress
+  const taxDelinquentYear = attomData.assessment?.tax?.taxDelinquentYear;
 
   const isDistressed =
     foreclosureStage.includes("notice of default") ||
@@ -47,9 +45,9 @@ export function classifyLead(attomData: any): LeadClassification {
     (recordingDate !== undefined && recordingDate !== null && recordingDate !== "") ||
     (taxDelinquentYear !== undefined && taxDelinquentYear !== null && taxDelinquentYear > 0);
 
-  // If distressed, automatically upgrade to Golden (60-day motivation)
+  // If distressed, automatically upgrade to Liquidator (High motivation)
   if (isDistressed) {
-    return { classification: "Golden", isDistressed, isAbsentee, yearsOwned };
+    return { classification: "Liquidator", isDistressed, isAbsentee, yearsOwned };
   }
 
   // --- 3. Strict Financial Guardrails (For non-distressed) ---
@@ -67,18 +65,22 @@ export function classifyLead(attomData: any): LeadClassification {
     if (openLoanBalance !== undefined && openLoanBalance !== null && scrValue !== undefined && scrValue !== null && scrValue > 0) {
       equityPercent = (1 - openLoanBalance / scrValue) * 100;
     } else {
-      // If we can't calculate it, push to Nurture
+      // If we can't calculate equity at all, push to Nurture
       return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
     }
   }
 
+  // If they have less than 40% equity, they are Nurture (no cash to move)
   if (equityPercent < 40) return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
 
   // Active Mortgage Interest Rate check
   const interestRate = attomData.mortgage?.firstMortgage?.interestRate;
-  if (interestRate === undefined || interestRate === null) return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
-  if (interestRate < 4.5) return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
 
-  // If it passes all financial strict filters, it's Golden.
-  return { classification: "Golden", isDistressed, isAbsentee, yearsOwned };
+  // They have >40% equity, but if we can't find their rate OR it's low, they are an Anchor
+  if (interestRate === undefined || interestRate === null || interestRate < 4.5) {
+      return { classification: "Anchor", isDistressed, isAbsentee, yearsOwned };
+  }
+
+  // If it passes all financial strict filters (>40% equity AND >4.5% rate), it's a Liquidator.
+  return { classification: "Liquidator", isDistressed, isAbsentee, yearsOwned };
 }

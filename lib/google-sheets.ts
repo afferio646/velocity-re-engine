@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 
-export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[][]) {
+export async function appendToGoogleSheet(liquidatorRows: any[][], anchorRows: any[][], nurtureRows: any[][]) {
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL?.replace(/^"|"$/g, '').trim();
   let privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
 
@@ -89,13 +89,23 @@ export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[
       }
     };
 
-    if (goldenRows.length > 0) {
-      await ensureSheet("Golden Leads");
+    if (liquidatorRows.length > 0) {
+      await ensureSheet("High-Yield Liquidators");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Golden Leads!A1",
+        range: "High-Yield Liquidators!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: goldenRows },
+        requestBody: { values: liquidatorRows },
+      });
+    }
+
+    if (anchorRows.length > 0) {
+      await ensureSheet("Equity Anchors");
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Equity Anchors!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: anchorRows },
       });
     }
 

@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     const leads = parsedData.data as any[];
     const headersFound = parsedData.meta.fields || [];
 
-    const goldenRows: any[][] = [];
+    const liquidatorRows: any[][] = [];
+    const anchorRows: any[][] = [];
     const nurtureRows: any[][] = [];
     let missingAddresses = 0;
     let apiFailures = 0;
@@ -131,8 +132,10 @@ export async function POST(req: Request) {
 
       for (const result of results) {
         if (result) {
-          if (result.classification === "Golden") {
-            goldenRows.push(result.row);
+          if (result.classification === "Liquidator") {
+            liquidatorRows.push(result.row);
+          } else if (result.classification === "Anchor") {
+            anchorRows.push(result.row);
           } else if (result.classification === "Nurture") {
             nurtureRows.push(result.row);
           }
@@ -141,14 +144,15 @@ export async function POST(req: Request) {
     }
 
     // 6. Append to Google Sheets
-    if (goldenRows.length > 0 || nurtureRows.length > 0) {
-      await appendToGoogleSheet(goldenRows, nurtureRows);
+    if (liquidatorRows.length > 0 || anchorRows.length > 0 || nurtureRows.length > 0) {
+      await appendToGoogleSheet(liquidatorRows, anchorRows, nurtureRows);
     }
 
     return NextResponse.json({
       success: true,
       totalProcessed: leads.length,
-      validLeads: goldenRows.length,
+      liquidatorLeads: liquidatorRows.length,
+      anchorLeads: anchorRows.length,
       nurtureLeads: nurtureRows.length,
       missingAddresses,
       apiFailures,
