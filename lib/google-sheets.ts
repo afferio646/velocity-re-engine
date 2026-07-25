@@ -1,10 +1,36 @@
 import { google } from "googleapis";
 
 export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[][]) {
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  // Handle newlines correctly in Vercel environment variables
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL?.replace(/^"|"$/g, '').trim();
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+
+  // Make private key parsing extremely robust for Vercel environment variables
+  if (privateKey) {
+    // Remove surrounding quotes if the user accidentally copied them
+    privateKey = privateKey.replace(/^"|"$/g, '');
+
+    // Convert literal \n strings to actual newlines
+    privateKey = privateKey.replace(/\\n/g, "\n");
+
+    // If the key is missing the BEGIN/END tags, try to reconstruct it
+    if (!privateKey.includes("BEGIN PRIVATE KEY")) {
+      // Remove any spaces just in case
+      const cleanKey = privateKey.replace(/\s+/g, '');
+      // Format it into 64-character lines (standard PEM format)
+      const formattedKey = cleanKey.match(/.{1,64}/g)?.join('\n') || cleanKey;
+      privateKey = `-----BEGIN PRIVATE KEY-----\n${formattedKey}\n-----END PRIVATE KEY-----\n`;
+    } else if (!privateKey.includes("\n")) {
+      // If tags exist but all newlines were lost (turned into spaces by Vercel)
+      const match = privateKey.match(/-----BEGIN PRIVATE KEY-----(.*)-----END PRIVATE KEY-----/);
+      if (match) {
+         const keyBody = match[1].replace(/\s+/g, '');
+         const formattedKey = keyBody.match(/.{1,64}/g)?.join('\n') || keyBody;
+         privateKey = `-----BEGIN PRIVATE KEY-----\n${formattedKey}\n-----END PRIVATE KEY-----\n`;
+      }
+    }
+  }
+
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID?.replace(/^"|"$/g, '').trim();
 
   if (!clientEmail || !privateKey || !spreadsheetId) {
     throw new Error("Google Sheets environment variables are not fully configured");
@@ -32,7 +58,6 @@ export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[
       "Custom Talk Track",
     ];
 
-    // Helper to ensure a sheet tab exists and has headers
     const ensureSheet = async (title: string) => {
       if (!existingSheets.includes(title)) {
         await sheets.spreadsheets.batchUpdate({
@@ -42,7 +67,6 @@ export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[
           }
         });
 
-        // Add headers to new sheet
         await sheets.spreadsheets.values.append({
           spreadsheetId,
           range: `${title}!A1`,
@@ -50,7 +74,6 @@ export async function appendToGoogleSheet(goldenRows: any[][], nurtureRows: any[
           requestBody: { values: [headers] }
         });
       } else {
-        // If sheet exists, just make sure headers are there (simple check)
         const getRes = await sheets.spreadsheets.values.get({
           spreadsheetId,
           range: `${title}!A1:E1`,
