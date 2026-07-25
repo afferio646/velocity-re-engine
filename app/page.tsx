@@ -42,7 +42,7 @@ export default function Home() {
         setMessage(msg);
       } else {
         setStatus("error");
-        setMessage(`Error: ${data.error || "Something went wrong."}`);
+        setMessage(`Error: ${data.error || "Something went wrong."}\nDetails: ${data.details || "Check Vercel Logs"}`);
       }
     } catch (err: any) {
       setStatus("error");
