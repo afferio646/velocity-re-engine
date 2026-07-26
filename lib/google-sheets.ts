@@ -110,10 +110,10 @@ export async function appendToGoogleSheet(liquidatorRows: any[][], anchorRows: a
     }
 
     if (nurtureRows.length > 0) {
-      await ensureSheet("12-Month Nurture");
+      await ensureSheet("Standard Expired Pipeline");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "12-Month Nurture!A1",
+        range: "Standard Expired Pipeline!A1",
         valueInputOption: "USER_ENTERED",
         requestBody: { values: nurtureRows },
       });
