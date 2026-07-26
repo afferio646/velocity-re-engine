@@ -8,9 +8,9 @@ export type LeadClassification = {
 export function classifyLead(attomData: any): LeadClassification {
   if (!attomData) return { classification: "Drop", isDistressed: false, isAbsentee: false, yearsOwned: null };
 
-  // --- 1. Behavioral & Lifestyle Indicators ---
+  // --- 1. Core Data Extraction ---
 
-  // Length of Ownership (Equity Fatigue)
+  // Years Owned
   let yearsOwned: number | null = null;
   const saleSearchDate = attomData.sale?.saleSearchDate;
   if (saleSearchDate) {
@@ -19,10 +19,10 @@ export function classifyLead(attomData: any): LeadClassification {
     yearsOwned = currentYear - purchaseYear;
   }
 
-  // Absentee Owner Indicator
+  // Absentee / Investor Status
   const ownerStatus = attomData.owner?.absenteeOwnerStatus;
   let isAbsentee = false;
-  if (ownerStatus === "A" || ownerStatus === "S") {
+  if (ownerStatus === "A" || ownerStatus === "S" || attomData.owner?.corporateIndicator === "Y") {
     isAbsentee = true;
   } else {
     const siteZip = attomData.address?.postal1;
@@ -32,8 +32,7 @@ export function classifyLead(attomData: any): LeadClassification {
     }
   }
 
-  // --- 2. Distress Indicators (Bypasses standard filters) ---
-
+  // Severe Distress
   const foreclosureStage = attomData.foreclosure?.stage?.description?.toLowerCase() || "";
   const recordingDate = attomData.foreclosure?.default?.recordingDate;
   const taxDelinquentYear = attomData.assessment?.tax?.taxDelinquentYear;
@@ -45,42 +44,35 @@ export function classifyLead(attomData: any): LeadClassification {
     (recordingDate !== undefined && recordingDate !== null && recordingDate !== "") ||
     (taxDelinquentYear !== undefined && taxDelinquentYear !== null && taxDelinquentYear > 0);
 
-  // If distressed, automatically upgrade to Liquidator (High motivation)
-  if (isDistressed) {
-    return { classification: "Liquidator", isDistressed, isAbsentee, yearsOwned };
-  }
-
-  // --- 3. Strict Financial Guardrails (For non-distressed) ---
-
-  // Corporate Indicator check
-  const corporateIndicator = attomData.owner?.corporateIndicator;
-  if (corporateIndicator === "Y") return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
-
-  // Equity Percent check
+  // Equity
   let equityPercent = attomData.avm?.amount?.equityPercent;
   if (equityPercent === undefined || equityPercent === null) {
     const openLoanBalance = attomData.mortgage?.amount?.openLoanBalance;
     const scrValue = attomData.avm?.amount?.scrValue;
-
     if (openLoanBalance !== undefined && openLoanBalance !== null && scrValue !== undefined && scrValue !== null && scrValue > 0) {
       equityPercent = (1 - openLoanBalance / scrValue) * 100;
     } else {
-      // If we can't calculate equity at all, push to Nurture
-      return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
+      equityPercent = null;
     }
   }
 
-  // If they have less than 40% equity, they are Nurture (no cash to move)
-  if (equityPercent < 40) return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
+  // --- 2. The Ranking Logic ---
 
-  // Active Mortgage Interest Rate check
-  const interestRate = attomData.mortgage?.firstMortgage?.interestRate;
-
-  // They have >40% equity, but if we can't find their rate OR it's low, they are an Anchor
-  if (interestRate === undefined || interestRate === null || interestRate < 4.5) {
-      return { classification: "Anchor", isDistressed, isAbsentee, yearsOwned };
+  // TIER 1: Liquidators (The highest flight risk)
+  // They have severe distress OR they are absentee owners/investors holding a failed listing.
+  if (isDistressed || isAbsentee) {
+    return { classification: "Liquidator", isDistressed, isAbsentee, yearsOwned };
   }
 
-  // If it passes all financial strict filters (>40% equity AND >4.5% rate), it's a Liquidator.
-  return { classification: "Liquidator", isDistressed, isAbsentee, yearsOwned };
+  // TIER 2: Equity Anchors (The prime traditional targets)
+  // They aren't distressed or investors, BUT they have lived there long enough for a life event (7+ years)
+  // OR we can definitively prove they have >40% equity.
+  if ((yearsOwned !== null && yearsOwned >= 7) || (equityPercent !== null && equityPercent >= 40)) {
+    return { classification: "Anchor", isDistressed, isAbsentee, yearsOwned };
+  }
+
+  // TIER 3: Nurture (Low priority right now)
+  // Owner-occupied, recently purchased (<7 years), and we can't prove high equity.
+  // Very likely to just stay put since they missed their price.
+  return { classification: "Nurture", isDistressed, isAbsentee, yearsOwned };
 }
