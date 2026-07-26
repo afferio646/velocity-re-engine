@@ -86,12 +86,30 @@ export async function POST(req: Request) {
 
       // 1. Fetch from ATTOM
       const { data: attomData, error: attomError } = await fetchAttomData(address1, address2);
+
+      const ownerName = `${firstName || ""} ${lastName || ""}`.trim() || "Owner";
+
       if (attomError || !attomData) {
         apiFailures++;
         if (attomError) {
           lastApiError = attomError;
         }
-        return null;
+        // If ATTOM fails (e.g. PO Box), push it to Standard Expired Pipeline instead of dropping
+        const fallbackTalkTrack = generateTalkTrack(
+          firstName || "Owner",
+          fullAddressForSheet,
+          dom || "N/A",
+          "N/A",
+          "N/A",
+          false,
+          false,
+          null,
+          leadType
+        );
+        return {
+          classification: "Nurture",
+          row: [fullAddressForSheet, ownerName, phone1 || "", phone2 || "", fallbackTalkTrack],
+        };
       }
 
       // 2. Classify Lead
@@ -100,7 +118,6 @@ export async function POST(req: Request) {
       if (classification === "Drop") return null;
 
       // 3. Extract needed variables for talk track
-      const ownerName = `${firstName || ""} ${lastName || ""}`.trim() || "Owner";
       const yearBuilt = attomData.summary?.yearbuilt || "N/A";
       const squareFootage = attomData.building?.size?.universalsize || "N/A";
 
