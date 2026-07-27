@@ -1,41 +1,31 @@
 export function generateTalkTrack(
-  ownerFirstName: string,
-  streetAddress: string,
+  ownerName: string,
+  address: string,
   dom: string,
-  yearBuilt: string | number,
-  squareFootage: string | number,
+  yearBuilt: string,
+  squareFootage: string,
   isDistressed: boolean,
   isAbsentee: boolean,
   yearsOwned: number | null,
-  leadType: string
+  classification: "Maximum" | "High" | "Prime" | "Drop" | "Nurture" | "Anchor" | "Liquidator"
 ): string {
-  const defaultInventory = "under 20";
-  let track = "";
+  // Use first name if possible
+  const firstName = ownerName.split(" ")[0] || "there";
 
-  if (leadType.toLowerCase().includes("fsbo")) {
-    track = `Hi ${ownerFirstName}, I noticed you're currently selling your property on ${streetAddress} by owner. I'm not calling to list it—our system actively tracks local asset profiles, and we flagged your home because it fits the exact ${yearBuilt} footprint of ${squareFootage} square feet that our buyers are aggressively targeting right now. With only about ${defaultInventory} active homes matching this in your immediate area, we have a severe inventory gap. Are you open to a clean offer if we can match your numbers, or are you strictly looking for retail buyers?`;
-  } else if (leadType.toLowerCase().includes("predictive") || leadType.toLowerCase().includes("cold")) {
-    track = `Hi ${ownerFirstName}, I'm not calling to list your house. Our system actively tracks local asset profiles, and we flagged your home because it fits the exact footprint of ${squareFootage} square feet that our buyers are aggressively targeting right now. With severe inventory shortages in the area, we have an immediate gap for your property profile. Are you open to a clean, off-market offer if we can match your numbers, or are you firmly staying put?`;
-  } else {
-    // Default to Expired script
-    const domText = (!dom || dom === "N/A" || dom.trim() === "")
-      ? "came off the market recently."
-      : `came off the market after being listed for ${dom} days.`;
+  // Format variables cleanly
+  const sqftStr = squareFootage !== "N/A" ? squareFootage : "specific";
+  const yearStr = yearBuilt !== "N/A" ? yearBuilt : "property";
 
-    track = `Hi ${ownerFirstName}, I noticed your property on ${streetAddress} ${domText} I'm calling because our system actively tracks local asset profiles, and we flagged your home specifically because it fits the exact ${yearBuilt} footprint of ${squareFootage} square feet that buyers are targeting. Right now in your immediate area, housing inventory is sitting at a severe deficit with ${defaultInventory} homes active on the market. We aren't looking to list your home traditionally—we have an immediate inventory gap for your exact property profile. Are you still open to a clean offer if we can match your terms, or have you decided to take the property off the market for good?`;
+  // MAXIMUM VELOCITY (Investors / Corporate / Distressed)
+  if (classification === "Maximum" || classification === "Liquidator") {
+    return `Hi ${firstName}, our system tracked that your investment property on ${address} recently came off the market. We actively map off-market acquisition targets in this area, and your asset fits the exact ${sqftStr} footprint our investor network is looking to absorb. I'm not sure why it didn't move on the retail market, but our buying matrix usually solves those gaps. Are you planning to hold and tenant the property, or are you open to exploring alternatives? If so, I'd like to stop by and get a clear picture of the asset so I can align it with our buyers.`;
   }
 
-  if (isDistressed) {
-    track += " Our system also flagged that your market profile recently shifted, meaning we can move on an expedited timeline to clear any outstanding balances or terms within a clean 14-day window if that fits your schedule better.";
+  // HIGH VELOCITY (Owner-Occupied, High Equity)
+  if (classification === "High" || classification === "Anchor") {
+    return `Hi ${firstName}, I'm calling regarding your property on ${address}. Our system actively tracks neighborhood footprints, and we flagged your home because buyers are currently targeting your exact ${yearStr} profile with ${sqftStr} square feet in this area. I'm not sure why your recent listing failed, but our buying matrix can usually solve those roadblocks. Have you decided to keep it off the market for good, or are you open to looking at alternatives? If so, I'd like to stop by and see the property so I can get a clear picture of how to align you with our buyers.`;
   }
 
-  if (isAbsentee) {
-    track += " Since this is an investment property and currently sitting empty, we can provide a quick, clean exit so you aren't bleeding cash on holding costs.";
-  }
-
-  if (yearsOwned !== null && yearsOwned >= 10 && !isDistressed && !isAbsentee) {
-    track += ` I see you've owned this property for about ${yearsOwned} years, so you likely have substantial equity built up. This allows us to be very aggressive on our offer price if you're looking to downsize or cash out smoothly.`;
-  }
-
-  return track;
+  // PRIME VELOCITY (Owner-Occupied, Lower Equity / Fallback)
+  return `Hi ${firstName}, I'm reaching out about ${address}. We monitor specific property profiles in your neighborhood, and your ${sqftStr} footprint is currently in high demand within our buyer network. I know your listing recently expired, and while I don't know the specifics of why it didn't sell, our positioning strategy usually bridges that gap—often through creative structures if traditional financing is the hurdle. Are you taking a break from the market, or are you open to alternatives? If you are, I'd love to quickly stop by so I can see exactly how to position your home for our buyers.`;
 }

@@ -131,7 +131,7 @@ export async function POST(req: Request) {
         isDistressed,
         isAbsentee,
         yearsOwned,
-        leadType
+        classification
       );
 
       // 5. Prepare row for Google Sheet
