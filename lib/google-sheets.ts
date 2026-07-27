@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 
-export async function appendToGoogleSheet(liquidatorRows: any[][], anchorRows: any[][], nurtureRows: any[][]) {
+export async function appendToGoogleSheet(maximumRows: any[][], highRows: any[][], primeRows: any[][]) {
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL?.replace(/^"|"$/g, '').trim();
   let privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
 
@@ -89,33 +89,33 @@ export async function appendToGoogleSheet(liquidatorRows: any[][], anchorRows: a
       }
     };
 
-    if (liquidatorRows.length > 0) {
-      await ensureSheet("High-Yield Liquidators");
+    if (maximumRows.length > 0) {
+      await ensureSheet("Maximum Velocity");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "High-Yield Liquidators!A1",
+        range: "Maximum Velocity!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: liquidatorRows },
+        requestBody: { values: maximumRows },
       });
     }
 
-    if (anchorRows.length > 0) {
-      await ensureSheet("Equity Anchors");
+    if (highRows.length > 0) {
+      await ensureSheet("High Velocity");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Equity Anchors!A1",
+        range: "High Velocity!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: anchorRows },
+        requestBody: { values: highRows },
       });
     }
 
-    if (nurtureRows.length > 0) {
-      await ensureSheet("Standard Expired Pipeline");
+    if (primeRows.length > 0) {
+      await ensureSheet("Prime Velocity");
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Standard Expired Pipeline!A1",
+        range: "Prime Velocity!A1",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: nurtureRows },
+        requestBody: { values: primeRows },
       });
     }
 

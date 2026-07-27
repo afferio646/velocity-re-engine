@@ -32,7 +32,7 @@ export default function Home() {
 
       if (response.ok) {
         setStatus("success");
-        let msg = `Success! Processed ${data.totalProcessed} records.\n\nHigh-Yield Liquidators: ${data.liquidatorLeads}\nEquity Anchors: ${data.anchorLeads}\nStandard Expired Pipeline: ${data.nurtureLeads}\nMissing/Invalid Addresses: ${data.missingAddresses}\nATTOM API Failures (or missing public data): ${data.apiFailures}`;
+        let msg = `Success! Processed ${data.totalProcessed} records.\n\nMaximum Velocity: ${data.maximumLeads}\nHigh Velocity: ${data.highLeads}\nPrime Velocity: ${data.primeLeads}\nMissing/Invalid Addresses: ${data.missingAddresses}\nATTOM API Failures (or missing public data): ${data.apiFailures}`;
 
         if (data.lastApiError) {
           msg += `\n\nLatest API Error Reason:\n❌ ${data.lastApiError}`;

@@ -36,9 +36,9 @@ export async function POST(req: Request) {
     const leads = parsedData.data as any[];
     const headersFound = parsedData.meta.fields || [];
 
-    const liquidatorRows: any[][] = [];
-    const anchorRows: any[][] = [];
-    const nurtureRows: any[][] = [];
+    const maximumRows: any[][] = [];
+    const highRows: any[][] = [];
+    const primeRows: any[][] = [];
     let missingAddresses = 0;
     let apiFailures = 0;
     let lastApiError = "";
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
           leadType
         );
         return {
-          classification: "Nurture",
+          classification: "Prime",
           row: [fullAddressForSheet, ownerName, phone1 || "", phone2 || "", fallbackTalkTrack],
         };
       }
@@ -149,28 +149,28 @@ export async function POST(req: Request) {
 
       for (const result of results) {
         if (result) {
-          if (result.classification === "Liquidator") {
-            liquidatorRows.push(result.row);
-          } else if (result.classification === "Anchor") {
-            anchorRows.push(result.row);
-          } else if (result.classification === "Nurture") {
-            nurtureRows.push(result.row);
+          if (result.classification === "Maximum") {
+            maximumRows.push(result.row);
+          } else if (result.classification === "High") {
+            highRows.push(result.row);
+          } else if (result.classification === "Prime") {
+            primeRows.push(result.row);
           }
         }
       }
     }
 
     // 6. Append to Google Sheets
-    if (liquidatorRows.length > 0 || anchorRows.length > 0 || nurtureRows.length > 0) {
-      await appendToGoogleSheet(liquidatorRows, anchorRows, nurtureRows);
+    if (maximumRows.length > 0 || highRows.length > 0 || primeRows.length > 0) {
+      await appendToGoogleSheet(maximumRows, highRows, primeRows);
     }
 
     return NextResponse.json({
       success: true,
       totalProcessed: leads.length,
-      liquidatorLeads: liquidatorRows.length,
-      anchorLeads: anchorRows.length,
-      nurtureLeads: nurtureRows.length,
+      maximumLeads: maximumRows.length,
+      highLeads: highRows.length,
+      primeLeads: primeRows.length,
       missingAddresses,
       apiFailures,
       lastApiError,
