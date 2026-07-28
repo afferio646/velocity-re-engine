@@ -8,16 +8,26 @@ export type LeadClassification = {
 export function classifyLead(attomData: any): LeadClassification {
   if (!attomData) return { classification: "Drop", isDistressed: false, isAbsentee: false, yearsOwned: null };
 
-  // --- 1. Core Data Extraction ---
+  // --- 0. THE VELOCITY SCRUB (The Bouncer) ---
 
-  // Years Owned (Kept for Talk Track script context, but removed from tier logic)
+  // 0a. Did they already sell it? (Deed Scrub)
   let yearsOwned: number | null = null;
   const saleSearchDate = attomData.sale?.saleSearchDate;
   if (saleSearchDate) {
-    const purchaseYear = new Date(saleSearchDate).getFullYear();
+    const purchaseDate = new Date(saleSearchDate);
     const currentYear = new Date().getFullYear();
-    yearsOwned = currentYear - purchaseYear;
+    yearsOwned = currentYear - purchaseDate.getFullYear();
+
+    // If the deed transferred in the last 12 months, they likely already sold it. DROP IT.
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+    if (purchaseDate > twelveMonthsAgo) {
+      return { classification: "Drop", isDistressed: false, isAbsentee: false, yearsOwned };
+    }
   }
+
+  // --- 1. Core Data Extraction ---
 
   // Absentee / Corporate / Investor Status
   const ownerStatus = attomData.owner?.absenteeOwnerStatus;
