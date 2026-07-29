@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     // Helper function to process a single lead
     const processLead = async (lead: any) => {
-      const addressCol = lead["Address"];
+      const addressCol = lead["Address"] || lead["Property Address"];
       const propCity = lead["Property City"];
       const propState = lead["Property State"];
       const propZip = lead["Property Zip"];
