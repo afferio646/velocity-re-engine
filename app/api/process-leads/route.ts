@@ -112,47 +112,29 @@ export async function POST(req: Request) {
 
       const ownerName = `${firstName || ""} ${lastName || ""}`.trim() || "Owner";
 
-      if (attomError || !attomData) {
+      // Even if ATTOM fails, we can still classify using BatchLeads CSV data!
+      if (attomError) {
         apiFailures++;
-        if (attomError) {
-          lastApiError = attomError;
-        }
-        // If ATTOM fails (e.g. PO Box), push it to Standard Expired Pipeline instead of dropping
-        const fallbackTalkTrack = generateTalkTrack(
-          firstName || "Owner",
-          fullAddressForSheet,
-          dom || "N/A",
-          "N/A",
-          "N/A",
-          false,
-          false,
-          null,
-          leadType
-        );
-        return {
-          classification: "Prime",
-          row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, fallbackTalkTrack],
-        };
+        lastApiError = attomError;
       }
 
-      // 2. Classify Lead
-      const { classification, isDistressed, isAbsentee, yearsOwned } = classifyLead(attomData);
+      // 2. Classify Lead (using both ATTOM and CSV)
+      const { classification, disposition, yearsOwned } = classifyLead(attomData, lead);
 
       if (classification === "Drop") return null;
 
       // 3. Extract needed variables for talk track
-      const yearBuilt = attomData.summary?.yearbuilt || "N/A";
-      const squareFootage = attomData.building?.size?.universalsize || "N/A";
+      const yearBuilt = attomData?.summary?.yearbuilt || "N/A";
+      const squareFootage = attomData?.building?.size?.universalsize || "N/A";
 
       // 4. Generate Talk Track
       const talkTrack = generateTalkTrack(
-        firstName || "Owner",
+        ownerName,
         fullAddressForSheet,
         dom || "N/A",
         yearBuilt,
         squareFootage,
-        isDistressed,
-        isAbsentee,
+        disposition,
         yearsOwned,
         classification
       );
@@ -160,7 +142,7 @@ export async function POST(req: Request) {
       // 5. Prepare row for Google Sheet
       return {
         classification,
-        row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, talkTrack],
+        row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, disposition, talkTrack],
       };
     };
 
