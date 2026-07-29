@@ -52,9 +52,6 @@ export async function POST(req: Request) {
 
       const firstName = lead["First Name"];
       const lastName = lead["Last Name"];
-      // Handle BatchLeads spaces in phone headers
-      const phone1 = lead["Phone1"] || lead["Phone 1"];
-      const phone2 = lead["Phone2"] || lead["Phone 2"];
       const dom = lead["DOM"];
       const leadType = lead["Lead Type"] || "Expired"; // Defaults to Expired if missing
 
@@ -62,6 +59,32 @@ export async function POST(req: Request) {
         missingAddresses++;
         return null;
       }
+
+      // DNC Waterfall Logic
+      const safePhones: { number: string; type: string }[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const phone = lead[`Phone ${i}`] || lead[`Phone${i}`];
+        const dnc = lead[`Phone ${i} DNC`] || lead[`Phone${i} DNC`];
+        const type = (lead[`Phone ${i} TYPE`] || lead[`Phone${i} TYPE`] || "").toLowerCase();
+
+        if (phone && dnc && dnc.trim().toLowerCase() === "no") {
+          safePhones.push({ number: phone, type });
+        }
+      }
+
+      if (safePhones.length === 0) {
+        // Drop lead entirely if there are no safe phones
+        return null;
+      }
+
+      // Prioritize mobile numbers, keep original order otherwise
+      const mobilePhones = safePhones.filter(p => p.type === "mobile");
+      const otherPhones = safePhones.filter(p => p.type !== "mobile");
+      const sortedPhones = [...mobilePhones, ...otherPhones];
+
+      const finalPhone1 = sortedPhones[0]?.number || "";
+      const finalPhone2 = sortedPhones[1]?.number || "";
+      const finalPhone3 = sortedPhones[2]?.number || "";
 
       let address1 = "";
       let address2 = "";
@@ -108,7 +131,7 @@ export async function POST(req: Request) {
         );
         return {
           classification: "Prime",
-          row: [fullAddressForSheet, ownerName, phone1 || "", phone2 || "", fallbackTalkTrack],
+          row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, fallbackTalkTrack],
         };
       }
 
@@ -137,7 +160,7 @@ export async function POST(req: Request) {
       // 5. Prepare row for Google Sheet
       return {
         classification,
-        row: [fullAddressForSheet, ownerName, phone1 || "", phone2 || "", talkTrack],
+        row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, talkTrack],
       };
     };
 
