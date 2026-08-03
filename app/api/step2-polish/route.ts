@@ -4,6 +4,7 @@ import { splitAddress } from "../../../lib/address-utils";
 import { fetchAttomData } from "../../../lib/attom-api";
 import { classifyLead } from "../../../lib/filters";
 import { generateTalkTrack } from "../../../lib/talk-track";
+import { generateEmailTrack } from "../../../lib/email-track";
 import { appendToGoogleSheet } from "../../../lib/google-sheets";
 
 export async function POST(req: Request) {
@@ -72,9 +73,9 @@ export async function POST(req: Request) {
         }
       }
 
+      let emailOnly = false;
       if (safePhones.length === 0) {
-        // Drop lead entirely if there are no safe phones
-        return null;
+        emailOnly = true;
       }
 
       // Prioritize mobile numbers, keep original order otherwise
@@ -127,22 +128,29 @@ export async function POST(req: Request) {
       const yearBuilt = attomData?.summary?.yearbuilt || "N/A";
       const squareFootage = attomData?.building?.size?.universalsize || "N/A";
 
-      // 4. Generate Talk Track
-      const talkTrack = generateTalkTrack(
-        ownerName,
-        fullAddressForSheet,
-        dom || "N/A",
-        yearBuilt,
-        squareFootage,
-        disposition,
-        yearsOwned,
-        classification
-      );
+      // 4. Generate Talk Track or Email Track
+      let talkTrack = "";
+      let emailTrack = "";
 
-      // 5. Prepare row for Google Sheet
+      if (emailOnly) {
+        emailTrack = generateEmailTrack(ownerName, fullAddressForSheet, disposition);
+      } else {
+        talkTrack = generateTalkTrack(
+          ownerName,
+          fullAddressForSheet,
+          dom || "N/A",
+          yearBuilt,
+          squareFootage,
+          disposition,
+          yearsOwned,
+          classification
+        );
+      }
+
+      // 5. Prepare row for Google Sheet (Address, Name, Ph1, Ph2, Ph3, Disposition, Talk Track, Email Script)
       return {
         classification,
-        row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, disposition, talkTrack],
+        row: [fullAddressForSheet, ownerName, finalPhone1, finalPhone2, finalPhone3, disposition, talkTrack, emailTrack],
       };
     };
 

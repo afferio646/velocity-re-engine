@@ -58,6 +58,7 @@ export async function appendToGoogleSheet(maximumRows: any[][], highRows: any[][
       "Tertiary Phone",
       "Disposition",
       "Custom Talk Track",
+      "Email Script",
     ];
 
     const ensureSheet = async (title: string) => {
@@ -78,7 +79,7 @@ export async function appendToGoogleSheet(maximumRows: any[][], highRows: any[][
       } else {
         const getRes = await sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: `${title}!A1:G1`,
+          range: `${title}!A1:H1`,
         });
         if (!getRes.data.values || getRes.data.values.length === 0) {
           await sheets.spreadsheets.values.append({
